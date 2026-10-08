@@ -1,0 +1,99 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+from config import DB_PATH
+from src.database import get_alerts, get_statistics, initialize_database
+
+st.set_page_config(page_title="Cybersecurity Sentinel", layout="wide")
+
+initialize_database()
+
+summary = get_statistics()
+alerts = get_alerts(limit=200)
+
+st.title("🛡️ Cybersecurity Sentinel")
+st.caption("Intelligent Cyber Threat and Network Anomaly Detection")
+
+col1, col2, col3, col4, col5 = st.columns(5)
+with col1:
+    st.metric("Total Events", summary.get("total_events", 0))
+with col2:
+    st.metric("Total Alerts", summary.get("total_alerts", 0))
+with col3:
+    st.metric("Malicious Alerts", summary.get("malicious_alerts", 0))
+with col4:
+    st.metric("Suspicious Alerts", summary.get("suspicious_alerts", 0))
+with col5:
+    st.metric("Average Risk", round(summary.get("average_risk", 0), 1))
+
+if alerts:
+    df = pd.DataFrame(alerts)
+    risk_levels = df["risk_level"].value_counts().to_dict() if "risk_level" in df.columns else {}
+    class_counts = df["classification"].value_counts().to_dict() if "classification" in df.columns else {}
+
+    col_left, col_right = st.columns(2)
+    with col_left:
+        labels = ["Normal", "Port Scan", "Brute Force", "Lateral Movement", "Data Exfiltration"]
+        values = [class_counts.get(label, 0) for label in labels]
+        fig = px.bar(x=labels, y=values, title="Threat Distribution")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_right:
+        risk_bins = {"0-30 Normal": 0, "31-70 Suspicious": 0, "71-100 Malicious": 0}
+        for _, row in df.iterrows():
+            score = float(row.get("risk_score", 0))
+            if score <= 30:
+                risk_bins["0-30 Normal"] += 1
+            elif score <= 70:
+                risk_bins["31-70 Suspicious"] += 1
+            else:
+                risk_bins["71-100 Malicious"] += 1
+        fig2 = px.pie(names=list(risk_bins.keys()), values=list(risk_bins.values()), title="Risk Distribution")
+        st.plotly_chart(fig2, use_container_width=True)
+
+    st.subheader("Alert Table")
+    display_df = df[["timestamp", "source_ip", "dest_ip", "classification", "risk_score", "risk_level", "status"]].copy()
+    display_df = display_df.rename(columns={
+        "timestamp": "Timestamp",
+        "source_ip": "Source IP",
+        "dest_ip": "Destination IP",
+        "classification": "Threat",
+        "risk_score": "Risk Score",
+        "risk_level": "Risk Level",
+        "status": "Status",
+    })
+    st.dataframe(display_df, use_container_width=True)
+
+    st.subheader("Alert Details")
+    selected = st.selectbox("Select alert", options=df["alert_id"].tolist())
+    item = df[df["alert_id"] == selected].iloc[0]
+
+    details = {
+        "Source": item.get("source_ip"),
+        "Destination": item.get("dest_ip"),
+        "Timestamp": item.get("timestamp"),
+        "Classification": item.get("classification"),
+        "Risk Score": item.get("risk_score"),
+        "Risk Level": item.get("risk_level"),
+    }
+    for key, value in details.items():
+        st.write(f"**{key}:** {value}")
+
+    evidence = item.get("evidence_features")
+    if isinstance(evidence, str):
+        try:
+            evidence = json.loads(evidence)
+        except Exception:
+            evidence = {"raw": evidence}
+    if isinstance(evidence, dict):
+        st.write("**Evidence:**")
+        for k, v in evidence.items():
+            st.write(f"- {k}: {v}")
+else:
+    st.info("No alerts have been generated yet. Run the pipeline or generate demo data first.")
