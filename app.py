@@ -1,31 +1,16 @@
-import argparse
-import json
-import os
-from pathlib import Path
+"""Streamlit web application for the Cybersecurity Sentinel dashboard."""
 
-from config import DATA_DIR, DEMO_ATTACKS_CSV, MAX_RISK_DEFAULT, NORMAL_CSV, SAMPLE_TELEMETRY_CSV
+from __future__ import annotations
 
+import logging
 
-def build_dataset_files() -> None:
-    """Generate demo CSV files using the synthetic generator."""
-    import generate_data
-
-    generate_data.generate_all()
+logger = logging.getLogger(__name__)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Cybersecurity Sentinel pipeline")
-    parser.add_argument("--input", type=str, default=str(SAMPLE_TELEMETRY_CSV), help="Path to telemetry CSV file")
-    parser.add_argument("--max-risk", type=int, default=MAX_RISK_DEFAULT, help="Maximum allowed risk threshold")
-    return parser.parse_args()
-
-
-def main() -> int:
-    args = parse_args()
-    from src.pipeline import run_pipeline
-
-    return run_pipeline(args.input, args.max_risk)
+def main() -> None:
+    """Run the Streamlit dashboard application."""
+    pass
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

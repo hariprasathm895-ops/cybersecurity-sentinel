@@ -1,3 +1,4 @@
-"""Package marker for the cybersecurity sentinel project."""
+"""Cybersecurity Sentinel - Intelligent Cyber Threat and Network Anomaly Detection System."""
 
-__all__ = []
+__version__ = "1.0.0"
+__author__ = "Cybersecurity Sentinel Team"
